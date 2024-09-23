@@ -52,9 +52,8 @@ io.on("connection", (socket) => {
     const sendUserSocket = onlineUsers.get(data.to);
     const activeChat = activeChats.get(data.to);
 
-    console.log(activeChats);
     if (sendUserSocket && activeChat === data.from) {
-      socket.to(sendUserSocket).emit("msg-recieve", data.message);
+      socket.to(sendUserSocket).emit("msg-recieve", data);
     }
   });
 });

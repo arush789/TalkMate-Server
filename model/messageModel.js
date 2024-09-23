@@ -5,8 +5,12 @@ const messagesSchema = new mongoose.Schema(
     message: {
       text: {
         type: String,
-        required: true,
+        required: false,
       },
+    },
+    images: {
+      type: String,
+      default: "",
     },
     users: Array,
     sender: {
