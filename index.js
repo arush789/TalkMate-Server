@@ -56,4 +56,12 @@ io.on("connection", (socket) => {
       socket.to(sendUserSocket).emit("msg-recieve", data);
     }
   });
+  socket.on("delete-msg", (data) => {
+    const sendUserSocket = onlineUsers.get(data.to);
+    const activeChat = activeChats.get(data.to);
+
+    if (sendUserSocket && activeChat === data.from) {
+      socket.to(sendUserSocket).emit("msg-deleted", data);
+    }
+  });
 });

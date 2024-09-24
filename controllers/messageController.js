@@ -2,7 +2,7 @@ const messageModel = require("../model/messageModel");
 
 module.exports.addMessage = async (req, res, next) => {
   try {
-    const { from, to, messages, image } = req.body;
+    const { from, to, messages, image, messageId } = req.body;
 
     if (!from || !to || (!messages && !image)) {
       return res.status(400).json({ msg: "Invalid input data" });
@@ -12,6 +12,7 @@ module.exports.addMessage = async (req, res, next) => {
       message: { text: messages || "" },
       users: [from, to],
       sender: from,
+      messageId: messageId,
     };
 
     if (image) {
@@ -48,9 +49,22 @@ module.exports.getAllMessage = async (req, res, next) => {
         fromSelf: msg.sender.toString() === from,
         message: msg.message.text,
         image: msg.images,
+        id: msg.messageId,
       };
     });
     return res.json(projectedMessages);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports.deleteMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.body;
+    await messageModel.findOneAndDelete({
+      messageId: messageId,
+    });
+    return res.json({ msg: "Message deleted successfully" });
   } catch (error) {
     next(error);
   }
