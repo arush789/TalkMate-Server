@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const socket = require("socket.io");
+const userModel = require("./model/userModel");
 
 const app = express();
 require("dotenv").config();
@@ -40,8 +41,22 @@ global.activeChats = new Map();
 io.on("connection", (socket) => {
   global.chatSocket = socket;
 
-  socket.on("add-user", (userId) => {
+  socket.on("add-user", async (userId) => {
     onlineUsers.set(userId, socket.id);
+    await userModel.findByIdAndUpdate(userId, { status: true });
+    io.emit("onlineUser", userId);
+  });
+
+  socket.on("disconnect", async () => {
+    const userId = [...onlineUsers.entries()].find(
+      ([key, value]) => value === socket.id
+    )?.[0];
+    if (userId) {
+      onlineUsers.delete(userId);
+      await userModel.findByIdAndUpdate(userId, { status: false });
+      io.emit("offlineUser", userId);
+      console.log("user disconnected", socket.id, userId);
+    }
   });
 
   socket.on("set-active-chat", ({ userId, activeChat }) => {
@@ -56,6 +71,7 @@ io.on("connection", (socket) => {
       socket.to(sendUserSocket).emit("msg-recieve", data);
     }
   });
+
   socket.on("delete-msg", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
     const activeChat = activeChats.get(data.to);

@@ -1,58 +1,71 @@
+const conversationModel = require("../model/conversationModel");
 const messageModel = require("../model/messageModel");
 
 module.exports.addMessage = async (req, res, next) => {
   try {
     const { from, to, messages, image, messageId } = req.body;
 
-    if (!from || !to || (!messages && !image)) {
-      return res.status(400).json({ msg: "Invalid input data" });
+    let conversation = await conversationModel.findOne({
+      participants: { $all: [from, to] },
+    });
+
+    if (!conversation) {
+      conversation = await conversationModel.create({
+        participants: [from, to],
+      });
     }
 
-    const messageObject = {
-      message: { text: messages || "" },
-      users: [from, to],
+    const newMessage = await messageModel.create({
+      conversationId: conversation._id,
       sender: from,
-      messageId: messageId,
-    };
+      message: { text: messages || "" },
+      images: image || "",
+      messageId,
+    });
 
-    if (image) {
-      messageObject.images = image;
-    }
+    conversation.messages.push(newMessage._id);
+    conversation.lastMessage = newMessage._id;
+    await conversation.save();
 
-    const data = await messageModel.create(messageObject);
-
-    if (data) return res.json({ msg: "Message added successfully" });
-
-    return res
-      .status(500)
-      .json({ msg: "Failed to add message to the database" });
+    res.json({ msg: "Message added successfully", newMessage });
   } catch (error) {
-    console.error("Error in addMessage:", error);
-    return res
-      .status(500)
-      .json({ msg: "Failed to add message", error: error.message });
+    next(error);
   }
 };
 
 module.exports.getAllMessage = async (req, res, next) => {
   try {
     const { from, to } = req.body;
-    const messages = await messageModel
-      .find({
-        users: {
-          $all: [from, to],
-        },
+
+    const conversation = await conversationModel
+      .findOne({
+        participants: { $all: [from, to] },
       })
-      .sort({ updateAt: 1 });
-    const projectedMessages = messages.map((msg) => {
-      return {
-        fromSelf: msg.sender.toString() === from,
-        message: msg.message.text,
-        image: msg.images,
-        id: msg.messageId,
-      };
+      .populate("messages")
+      .populate("lastMessage");
+
+    if (!conversation) {
+      return res.json([]);
+    }
+
+    const projectedMessages = conversation.messages.map((msg) => ({
+      fromSelf: msg.sender.toString() === from,
+      message: msg.message.text,
+      image: msg.images,
+      id: msg.messageId,
+    }));
+
+    res.json({
+      messages: projectedMessages,
+      lastMessage: conversation.lastMessage
+        ? {
+            fromSelf: conversation.lastMessage.sender.toString() === from,
+            message: conversation.lastMessage.message.text,
+            image: conversation.lastMessage.images,
+            id: conversation.lastMessage.messageId,
+          }
+        : null,
     });
-    return res.json(projectedMessages);
   } catch (error) {
     next(error);
   }
@@ -61,9 +74,35 @@ module.exports.getAllMessage = async (req, res, next) => {
 module.exports.deleteMessage = async (req, res, next) => {
   try {
     const { messageId } = req.body;
-    await messageModel.findOneAndDelete({
-      messageId: messageId,
-    });
+
+    const message = await messageModel.findOne({ messageId });
+
+    if (!message) {
+      return res.status(404).json({ msg: "Message not found" });
+    }
+
+    const conversation = await conversationModel.findById(
+      message.conversationId
+    );
+
+    if (!conversation) {
+      return res.status(404).json({ msg: "Conversation not found" });
+    }
+
+    conversation.messages = conversation.messages.filter(
+      (msgId) => msgId.toString() !== message._id.toString()
+    );
+
+    if (conversation.lastMessage.toString() === message._id.toString()) {
+      conversation.lastMessage = conversation.messages.length
+        ? conversation.messages[conversation.messages.length - 1]
+        : null;
+    }
+
+    await conversation.save();
+
+    await messageModel.findOneAndDelete({ messageId });
+
     return res.json({ msg: "Message deleted successfully" });
   } catch (error) {
     next(error);
