@@ -16,6 +16,19 @@ const conversationSchema = new mongoose.Schema(
         default: [],
       },
     ],
+    pendingRead: [
+      {
+        message: {
+          type: String,
+          ref: "Message",
+          default: "",
+        },
+        sender: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
     lastMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",

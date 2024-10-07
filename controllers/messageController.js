@@ -25,6 +25,7 @@ module.exports.addMessage = async (req, res, next) => {
 
     conversation.messages.push(newMessage._id);
     conversation.lastMessage = newMessage._id;
+
     await conversation.save();
 
     res.json({ msg: "Message added successfully", newMessage });
@@ -42,7 +43,8 @@ module.exports.getAllMessage = async (req, res, next) => {
         participants: { $all: [from, to] },
       })
       .populate("messages")
-      .populate("lastMessage");
+      .populate("lastMessage")
+      .populate("pendingRead");
 
     if (!conversation) {
       return res.json([]);
@@ -53,6 +55,7 @@ module.exports.getAllMessage = async (req, res, next) => {
       message: msg.message.text,
       image: msg.images,
       id: msg.messageId,
+      time: msg.createdAt,
     }));
 
     res.json({
@@ -63,8 +66,10 @@ module.exports.getAllMessage = async (req, res, next) => {
             message: conversation.lastMessage.message.text,
             image: conversation.lastMessage.images,
             id: conversation.lastMessage.messageId,
+            time: conversation.lastMessage.createdAt,
           }
         : null,
+      pendingRead: conversation.pendingRead.messageNum || 0,
     });
   } catch (error) {
     next(error);

@@ -5,6 +5,8 @@ const userRoutes = require("./routes/userRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const socket = require("socket.io");
 const userModel = require("./model/userModel");
+const conversationModel = require("./model/conversationModel");
+const messageModel = require("./model/messageModel");
 
 const app = express();
 require("dotenv").config();
@@ -59,16 +61,56 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("set-active-chat", ({ userId, activeChat }) => {
+  socket.on("set-active-chat", async ({ userId, activeChat }) => {
     activeChats.set(userId, activeChat);
+
+    const conversation = await conversationModel
+      .findOne({
+        participants: { $all: [userId, activeChat] },
+      })
+      .populate("pendingRead");
+
+    if (!conversation) return;
+
+    const otherUserId = activeChat;
+
+    if (activeChats.has(otherUserId)) {
+      conversation.pendingRead = [];
+      socket.emit("messageSeen", {
+        userId: userId,
+        contactId: activeChat,
+      });
+      await conversation.save();
+    }
   });
 
-  socket.on("send-msg", (data) => {
+  socket.on("lastMsg", (data) => {
+    socket.broadcast.emit("lastMsgRecieve", data);
+  });
+
+  socket.on("send-msg", async (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
     const activeChat = activeChats.get(data.to);
 
     if (sendUserSocket && activeChat === data.from) {
       socket.to(sendUserSocket).emit("msg-recieve", data);
+    } else {
+      const conversation = await conversationModel.findOne({
+        participants: { $all: [data.from, data.to] },
+      });
+
+      if (!conversation.pendingRead) {
+        conversation.pendingRead = [];
+      }
+
+      const newPendingRead = {
+        message: data.message,
+        sender: data.from,
+      };
+
+      conversation.pendingRead.push(newPendingRead);
+
+      await conversation.save();
     }
   });
 
