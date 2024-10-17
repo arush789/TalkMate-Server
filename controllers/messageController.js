@@ -3,7 +3,7 @@ const messageModel = require("../model/messageModel");
 
 module.exports.addMessage = async (req, res, next) => {
   try {
-    const { from, to, messages, image, messageId } = req.body;
+    const { from, to, messages, image, messageId, gif } = req.body;
 
     let conversation = await conversationModel.findOne({
       participants: { $all: [from, to] },
@@ -20,6 +20,7 @@ module.exports.addMessage = async (req, res, next) => {
       sender: from,
       message: { text: messages || "" },
       images: image || "",
+      gifs: gif || "",
       messageId,
     });
 
@@ -54,6 +55,7 @@ module.exports.getAllMessage = async (req, res, next) => {
       fromSelf: msg.sender.toString() === from,
       message: msg.message.text,
       image: msg.images,
+      gif: msg.gifs,
       id: msg.messageId,
       time: msg.createdAt,
     }));
@@ -65,6 +67,7 @@ module.exports.getAllMessage = async (req, res, next) => {
             fromSelf: conversation.lastMessage.sender.toString() === from,
             message: conversation.lastMessage.message.text,
             image: conversation.lastMessage.images,
+            gif: conversation.lastMessage.gifs,
             id: conversation.lastMessage.messageId,
             time: conversation.lastMessage.createdAt,
           }

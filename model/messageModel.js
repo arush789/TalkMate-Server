@@ -22,6 +22,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    gifs: {
+      type: String,
+      default: "",
+    },
     messageId: {
       type: String,
       required: true,

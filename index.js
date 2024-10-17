@@ -104,7 +104,7 @@ io.on("connection", (socket) => {
       }
 
       const newPendingRead = {
-        message: data.message,
+        message: data.message || data.image || data.gif,
         sender: data.from,
       };
 
