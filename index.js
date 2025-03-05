@@ -7,6 +7,7 @@ const socket = require("socket.io");
 const userModel = require("./model/userModel");
 const conversationModel = require("./model/conversationModel");
 const messageModel = require("./model/messageModel");
+const axios = require("axios");
 
 const app = express();
 require("dotenv").config();
@@ -45,20 +46,7 @@ io.on("connection", (socket) => {
 
   socket.on("add-user", async (userId) => {
     onlineUsers.set(userId, socket.id);
-    await userModel.findByIdAndUpdate(userId, { status: true });
     io.emit("onlineUser", userId);
-  });
-
-  socket.on("disconnect", async () => {
-    const userId = [...onlineUsers.entries()].find(
-      ([key, value]) => value === socket.id
-    )?.[0];
-    if (userId) {
-      onlineUsers.delete(userId);
-      await userModel.findByIdAndUpdate(userId, { status: false });
-      io.emit("offlineUser", userId);
-      console.log("user disconnected", socket.id, userId);
-    }
   });
 
   socket.on("set-active-chat", async ({ userId, activeChat }) => {

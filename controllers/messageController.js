@@ -56,7 +56,7 @@ module.exports.getAllMessage = async (req, res, next) => {
       message: msg.message.text,
       image: msg.images,
       gif: msg.gifs,
-      id: msg.messageId,
+      messageId: msg.messageId,
       time: msg.createdAt,
     }));
 
@@ -68,7 +68,7 @@ module.exports.getAllMessage = async (req, res, next) => {
             message: conversation.lastMessage.message.text,
             image: conversation.lastMessage.images,
             gif: conversation.lastMessage.gifs,
-            id: conversation.lastMessage.messageId,
+            messageId: conversation.lastMessage.messageId,
             time: conversation.lastMessage.createdAt,
           }
         : null,
